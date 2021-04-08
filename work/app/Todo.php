@@ -15,22 +15,29 @@ class Todo {
         Token::create();
     }
 
-    // todoがpostされたときの処理
+    // indexにアクセスされたら必ず走るメソッド
     public function processPost() {
-        // todoが入力されPOSTされたら以下が発動
+
+        // indexにアクセスされ、todoが入力されPOSTされたら以下が発動
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Tokenクラスのvalidateメソッドを呼び出す。tokenが一致していなければ処理を強制終了させる
             Token::validate();
 
             $action = filter_input(INPUT_GET, 'action');
-            pr($action);
+
             switch ($action) {
                 case 'add':
-                    $this->add();
+                    $id = $this->add();
+                    // これから出力する内容はjson形式である、という宣言をheaderでする
+                    header('COntent-Type: application/json');
+                    // json_encode :  キー付きの配列をjson形式に変換してくれる。キー付きの配列を渡してjs側でjsonデータを取得する
+                    echo json_encode(['id' => $id]);
                     break;
                 case 'toggle':
-                    $this->toggle();
+                    $isDone = $this->toggle();
+                    header('Content-Type: application/json');
+                    echo json_encode(['is_done' => $isDone]);
                     break;
                 case 'delete':
                     $this->delete();
@@ -38,11 +45,9 @@ class Todo {
                 case 'purge':
                     $this->purge();
                     break;
-                default;
+                default:
                     exit;
             }
-            // todo登録後に更新すると再度todoが追加されるのを防ぐためのリダイレクト
-            header('Location: ' . SITE_URL);
             exit;
         }
     }
@@ -61,6 +66,9 @@ class Todo {
         $stmt->bindValue('title', $title, \PDO::PARAM_STR);
         // クエリを実行する
         $stmt->execute();
+
+        // idを取得し、jsにidを返す。         lastInsertId :  直前に挿入されたレコードのidを取得することができる。返り値は文字列型のため、整数型でキャストしておく(int)
+        return (int) $this->pdo->lastInsertId();
     }
 
     // 【UPDATE】todoを更新する (クラス内からしか呼び出さないためprivateとする)
@@ -69,12 +77,28 @@ class Todo {
         if (empty($id)) {
             return;
         }
+
+        // preateメソッドを使用しSQLの実行前準備をする。変数値をプレースホルダとして設定する  :id   is_done = NOT is_done とすることでtrueとfalseが入れ替わる
+        $stmt = $this->pdo->prepare("SELECT * FROM todos WHERE id = :id");
+        // プレースホルダに値をバインドする bindValue(プレースホルダ名, バインドする値, 値のデータ型)
+        $stmt->bindValue('id', $id, \PDO::PARAM_INT);
+        // execute()メソッド：値をバインドした結果のSQLを実行する
+        $stmt->execute();
+        $todo = $stmt->fetch();
+        if (empty($todo)) {
+            header('HTTP', true, 404); // HTTP ステータスコード
+            exit;
+        }
+
         // preateメソッドを使用しSQLの実行前準備をする。変数値をプレースホルダとして設定する  :id   is_done = NOT is_done とすることでtrueとfalseが入れ替わる
         $stmt = $this->pdo->prepare("UPDATE todos SET is_done = NOT is_done WHERE id = :id");
         // プレースホルダに値をバインドする bindValue(プレースホルダ名, バインドする値, 値のデータ型)
         $stmt->bindValue('id', $id, \PDO::PARAM_INT);
         // execute()メソッド：値をバインドした結果のSQLを実行する
         $stmt->execute();
+
+        // MySQLの真偽値は0or1で管理されておりjsで使いにくいため審議型でキャストしておく
+        return (boolean) !$todo->is_done;
     }
 
     // 【DELETE】todoを削除する  (クラス内からしか呼び出さないためprivateとする)

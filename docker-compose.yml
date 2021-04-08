@@ -18,9 +18,22 @@ services:
     - db
     # http://localhost:8562/ でサイト表示
     ports:
-    - 8563:8000
+    - 8564:8000
     volumes:
     - ./work:/work
 
+  # phpMyAdminコンテナを追加する
+  pma:
+    image: phpmyadmin/phpmyadmin:5.0.2
+    environment:
+      - PMA_HOST=db
+      - PMA_USER=myappuser
+      - PMA_PASSWORD=myapppass
+    ports:
+      - 8090:80
+    volumes:
+      - pma-session-store:/sessions
+
 volumes:
   db-data:
+  pma-session-store:

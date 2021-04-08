@@ -4,7 +4,6 @@ body {
 
 header {
     display: flex;
-    justify-content: space-between;
 }
 
 main {
@@ -36,8 +35,8 @@ li {
     display: flex;
     margin-bottom: 8px;
 }
-
-.done {
+/* inputの要素がチェックされたときに次のspanに対して発動するスタイル */
+input[type="checkbox"]:checked + span {
     text-decoration: line-through;
     color: #ccc;
 }
@@ -51,11 +50,9 @@ input[type="checkbox"] {
     color: #ccc;
     cursor: pointer;
     font-size: 14px;
-}
-
-.delete-form {
     margin-left: auto;
     padding-left: 8px;
 }
+
 
 
